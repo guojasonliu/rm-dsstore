@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+show_help() {
+	cat <<EOF
+rm-dsstore — recursively delete macOS .DS_Store files
+
+Usage: rm-dsstore [OPTIONS] [PATH ...]
+
+If no PATH is given, defaults to current directory.
+
+Options:
+	-n, --dry-run   Show what would be deleted; don't delete
+	-v, --verbose   Print progress
+	-h, --help      Show this help and exit
+
+
+Examples:
+	rm-dsstore                # current directory
+	rm-dsstore ~/Projects     # specific tree
+	rm-dsstore -n -v . ~/code # dry-run multiple paths
+EOF
+}
+
+
+DRY_RUN=0
+VERBOSE=0
+PATHS=()
+
+
+
+while (( "$#" )); do
+	arg="$1"
+	# End of options marker
+	if [ "$arg" = "--" ]; then
+		shift
+		break
+	fi
+
+	# Long options
+	if [[ "$arg" == --* ]]; then
+		case "$arg" in
+			--dry-run) DRY_RUN=1; shift ;;
+			--verbose) VERBOSE=1; shift ;;
+			--help) show_help; exit 0 ;;
+			*) echo "Unknown option: $arg" >&2; exit 2 ;;
+		esac
+		continue
+	fi
+
+	# Short options (may be combined, e.g. -nv)
+	if [[ "$arg" == -* && "$arg" != "-" ]]; then
+		short="${arg#-}"
+		i=0
+		while [ $i -lt ${#short} ]; do
+			opt=${short:$i:1}
+			case "$opt" in
+				n) DRY_RUN=1 ;;
+				v) VERBOSE=1 ;;
+				h) show_help; exit 0 ;;
+				*) echo "Unknown option: -$opt" >&2; exit 2 ;;
+			esac
+			i=$((i+1))
+		done
+		shift
+		continue
+	fi
+
+	# Positional
+	PATHS+=("$1"); shift
+done
+
+
+# Append any leftover positional args after --
+for arg in "$@"; do
+	PATHS+=("$arg")
+done
+
+
+if [ ${#PATHS[@]} -eq 0 ]; then
+	PATHS=(".")
+fi
+
+
+found_any=0
+for p in "${PATHS[@]}"; do
+	if [ ! -e "$p" ]; then
+		echo "rm-dsstore: path not found: $p" >&2
+		continue
+	fi
+
+	(( VERBOSE )) && echo "Scanning: $p"
+
+	if (( DRY_RUN )); then
+		# Print candidates; don't delete
+		if out=$(find "$p" -type f -name '.DS_Store' -print); then
+			if [ -n "$out" ]; then
+				found_any=1
+				echo "$out"
+			fi
+		fi
+	else
+		# Delete and optionally show each path
+		if (( VERBOSE )); then
+			# Print then delete
+			while IFS= read -r f; do
+				echo "Deleting: $f"
+			done < <(find "$p" -type f -name '.DS_Store' -print)
+		fi
+
+		# Actual deletion
+		find "$p" -type f -name '.DS_Store' -delete
+	fi
+done
+
+
+if (( DRY_RUN )); then
+	if (( found_any )); then
+		echo "(dry-run) Above files would be deleted."
+	else
+		echo "(dry-run) No .DS_Store files found."
+	fi
+fi

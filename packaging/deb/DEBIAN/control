@@ -1,0 +1,8 @@
+Package: rm-dsstore
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: Your Name <you@example.com>
+Description: Recursively delete macOS .DS_Store files
+ A tiny utility to remove .DS_Store files from a directory tree.
