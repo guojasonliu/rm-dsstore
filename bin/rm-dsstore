@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 show_help() {
 	cat <<EOF
@@ -28,46 +27,15 @@ VERBOSE=0
 PATHS=()
 
 
-
 while (( "$#" )); do
-	arg="$1"
-	# End of options marker
-	if [ "$arg" = "--" ]; then
-		shift
-		break
-	fi
-
-	# Long options
-	if [[ "$arg" == --* ]]; then
-		case "$arg" in
-			--dry-run) DRY_RUN=1; shift ;;
-			--verbose) VERBOSE=1; shift ;;
-			--help) show_help; exit 0 ;;
-			*) echo "Unknown option: $arg" >&2; exit 2 ;;
-		esac
-		continue
-	fi
-
-	# Short options (may be combined, e.g. -nv)
-	if [[ "$arg" == -* && "$arg" != "-" ]]; then
-		short="${arg#-}"
-		i=0
-		while [ $i -lt ${#short} ]; do
-			opt=${short:$i:1}
-			case "$opt" in
-				n) DRY_RUN=1 ;;
-				v) VERBOSE=1 ;;
-				h) show_help; exit 0 ;;
-				*) echo "Unknown option: -$opt" >&2; exit 2 ;;
-			esac
-			i=$((i+1))
-		done
-		shift
-		continue
-	fi
-
-	# Positional
-	PATHS+=("$1"); shift
+	case "$1" in
+		-n|--dry-run) DRY_RUN=1; shift ;;
+		-v|--verbose) VERBOSE=1; shift ;;
+		-h|--help) show_help; exit 0 ;;
+		--) shift; break ;;
+		-*) echo "Unknown option: $1" >&2; exit 2 ;;
+		*) PATHS+=("$1"); shift ;;
+	esac
 done
 
 
